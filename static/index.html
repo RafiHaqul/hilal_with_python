@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalkulator Hilal</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="static/style.css">
+
+</head>
+<body>
+<div class="app">
+
+  <div class="masthead">
+    <svg class="moon-art" viewBox="0 0 52 52" fill="none">
+      <circle cx="26" cy="26" r="22" fill="#1a1714" stroke="#b8861a" stroke-width="1"/>
+      <circle cx="33" cy="26" r="18" fill="#0d0b09"/>
+      <circle cx="20" cy="22" r="2" fill="#b8861a" opacity="0.4"/>
+      <circle cx="30" cy="35" r="1.2" fill="#b8861a" opacity="0.3"/>
+      <circle cx="15" cy="32" r="1.5" fill="#b8861a" opacity="0.25"/>
+    </svg>
+    <span class="masthead-arabic">هِلَال</span>
+    <div class="masthead-title">Kalkulator Hilal</div>
+    <div class="masthead-sub">Powered by Python <code>ephem</code> · Flask Backend</div>
+    <div class="masthead-sub" style=" color: rgb(255, 135, 135);">WARNING : BID'AH BAGI KELOMPOK TERTENTU</div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Memeriksa koneksi ke server...</span>
+  </div>
+
+  <div class="card">
+    <span class="card-label">Tanggal Pengamatan</span>
+    <div class="field">
+      <label>Tanggal</label>
+      <input type="date" id="input-date">
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="card-label">Lokasi Pengamat</span>
+    <div class="loc-row">
+      <div class="field">
+        <label>Lintang (°)</label>
+        <input type="number" id="input-lat" placeholder="Contoh : -2.2161" step="0.0001">
+      </div>
+      <div class="field">
+        <label>Bujur (°)</label>
+        <input type="number" id="input-lon" placeholder="Contoh : 113.9213" step="0.0001">
+      </div>
+      <button class="btn-sm" onclick="getLocation()">⊙ GPS</button>
+    </div>
+    <div class="field">
+      <label>Elevasi (meter dpl)</label>
+      <input type="number" id="input-elev" value="0" min="0" placeholder="0">
+    </div>
+  </div>
+
+<div class="card" style="padding:1rem 1.5rem;">
+    <span class="card-label">Kriteria Penentuan Hilal</span>
+    <div class="field">
+        <select id="input-kriteria" style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%271a1714%27 stroke-width=%272%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.65rem center; background-size: 1.2em; padding-right: 2.5rem;">
+            <option value="mabims">MABIMS — Altitude > 3°, Elongasi > 6.4°</option>
+            <option value="wujudul">Wujudul Hilal — Altitude > 0°, Elongasi > 0°</option>
+            <option value="odeh">Odeh — Didasarkan pada ARCV dan lebar sabit bulan </option>
+        </select>
+    </div>
+</div>
+
+  <button class="btn-primary" id="btn-hitung" onclick="hitung()">Hitung Posisi Hilal</button>
+
+  <div class="loading-bar" id="loading-bar">
+    <div class="loading-bar-track"><div class="loading-bar-fill"></div></div>
+    <div class="loading-text" id="loading-text">Menghitung dengan ephem...</div>
+  </div>
+
+  <div class="error-box" id="error-box"></div>
+
+  <div class="result-panel" id="result-panel">
+    <div class="result-header" id="result-header">
+      <div class="verdict-dot"></div>
+      <div class="verdict-text" id="verdict-text">—</div>
+    </div>
+    <div class="result-body">
+      <canvas id="sky-canvas" class="sky-canvas" width="680" height="200"></canvas>
+
+      <div class="metrics-grid">
+        <div class="metric">
+          <span class="metric-label">Ketinggian Bulan</span>
+          <span class="metric-value" id="m-moon-alt">—</span><span class="metric-unit">°</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Elongasi</span>
+          <span class="metric-value" id="m-elong">—</span><span class="metric-unit">°</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Umur Bulan</span>
+          <span class="metric-value" id="m-age">—</span><span class="metric-unit">jam</span>
+        </div>
+      </div>
+
+      <table class="info-table">
+        <tr><td>Waktu Sunset (UTC)</td><td id="r-sunset">—</td></tr>
+        <tr><td>Ketinggian Matahari</td><td id="r-sun-alt">—</td></tr>
+        <tr><td>Azimuth Bulan</td><td id="r-az-moon">—</td></tr>
+        <tr><td>Azimuth Matahari</td><td id="r-az-sun">—</td></tr>
+        <tr><td>ARCV (Altitude Relative to Sun)</td><td id="r-arcv">—</td></tr>
+        <tr><td>Lebar Sabit (Odeh W)</td><td id="r-odeh-w">—</td></tr>
+        <tr><td>Fraksi Iluminasi Bulan</td><td id="r-illum">—</td></tr>
+        <tr><td>Koordinat</td><td id="r-coords">—</td></tr>
+      </table>
+
+      <div class="criteria-note" id="criteria-note"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API_BASE = 'http://localhost:5000';
+
+// Cek koneksi ke server saat halaman dimuat
+async function checkServer() {
+  try {
+    const r = await fetch(API_BASE + '/api/hilal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tanggal: '2024-01-01', lat: 0, lon: 0 }),
+      signal: AbortSignal.timeout(3000)
+    });
+    document.getElementById('status-dot').className = 'status-dot online';
+    document.getElementById('status-text').textContent = 'Server Flask berjalan di localhost:5000';
+  } catch {
+    document.getElementById('status-dot').className = 'status-dot offline';
+    document.getElementById('status-text').textContent = 'Server tidak terdeteksi — jalankan: python app.py';
+  }
+}
+
+// Set tanggal input ke hari ini secara otomatis
+function setTodayDate() {
+  const d = new Date();
+  document.getElementById('input-date').value =
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Dapatkan lokasi pengguna dengan Geolocation API
+function getLocation() {
+  if (!navigator.geolocation) { alert('Geolokasi tidak didukung browser ini. Masukkan koordinat secara manual.'); return; }
+  navigator.geolocation.getCurrentPosition(p => {
+    document.getElementById('input-lat').value = p.coords.latitude.toFixed(4);
+    document.getElementById('input-lon').value = p.coords.longitude.toFixed(4);
+    if (p.coords.altitude) document.getElementById('input-elev').value = Math.round(p.coords.altitude);
+  }, () => {
+    document.getElementById('input-lat').value = '-2.2161';
+    document.getElementById('input-lon').value = '113.9213';
+  });
+}
+
+// fungsi menampilkan status
+function setLoading(on, msg) { //loading
+  document.getElementById('loading-bar').classList.toggle('visible', on);
+  document.getElementById('loading-text').textContent = msg || '';
+  document.getElementById('btn-hitung').disabled = on;
+}
+
+function showError(msg) { //error
+  const el = document.getElementById('error-box');
+  el.style.display = 'block';
+  el.textContent = 'Error: ' + msg;
+}
+
+function hideError() { //hide error
+  document.getElementById('error-box').style.display = 'none';
+}
+
+// Fungsi utama untuk menghitung posisi hilal dengan memanggil API Flask
+async function hitung() {
+  hideError();
+  const tanggal  = document.getElementById('input-date').value;
+  const lat      = parseFloat(document.getElementById('input-lat').value);
+  const lon      = parseFloat(document.getElementById('input-lon').value);
+  const elevasi  = parseFloat(document.getElementById('input-elev').value) || 0;
+  const kriteria = document.getElementById('input-kriteria').value;
+
+  if (!tanggal || isNaN(lat) || isNaN(lon)) {
+    showError('Lengkapi tanggal dan koordinat lokasi terlebih dahulu.');
+    return;
+  }
+
+  setLoading(true, 'Menghitung posisi hilal dengan Python ephem...');
+  document.getElementById('result-panel').classList.remove('visible');
+
+  try {// Panggil API Flask untuk menghitung posisi hilal
+    const response = await fetch(API_BASE + '/api/hilal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tanggal, lat, lon, elevasi, kriteria })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    setLoading(false);
+    renderResult(data);
+
+  } catch (e) {
+    setLoading(false);
+    if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+      showError('Tidak dapat terhubung ke server. Pastikan Flask sudah berjalan: python app.py');
+    } else {
+      showError(e.message);
+    }
+  }
+}
+
+// Fungsi untuk menampilkan hasil perhitungan hilal di panel hasil
+function renderResult(r) {
+  const verdictClass = r.verdict === 'terlihat' ? 'verdict-terlihat'
+    : r.verdict === 'mungkin' ? 'verdict-mungkin' : 'verdict-tidak';
+
+  document.getElementById('result-panel').className = 'result-panel visible';
+  document.getElementById('result-header').className = 'result-header ' + verdictClass;
+  document.getElementById('verdict-text').textContent = r.keterangan;
+
+  document.getElementById('m-moon-alt').textContent = r.altitude_moon.toFixed(2);
+  document.getElementById('m-elong').textContent     = r.elongasi.toFixed(2);
+  document.getElementById('m-age').textContent       = r.umur_bulan_jam.toFixed(1);
+
+  document.getElementById('r-sunset').textContent  = r.sunset_utc;
+  document.getElementById('r-sun-alt').textContent = r.altitude_sun.toFixed(2) + '°';
+  document.getElementById('r-az-moon').textContent = r.azimuth_moon.toFixed(2) + '°';
+  document.getElementById('r-az-sun').textContent  = r.azimuth_sun.toFixed(2) + '°';
+  document.getElementById('r-arcv').textContent    = r.arcv.toFixed(2) + '°';
+  document.getElementById('r-odeh-w').textContent  = r.lebar_sabit_W !== null ? r.lebar_sabit_W.toFixed(2) + ' arcmin' : '—';
+  document.getElementById('r-illum').textContent   = r.illuminasi.toFixed(2) + '%';
+  document.getElementById('r-coords').textContent  = `${r.lat}°, ${r.lon}° · ${r.elevasi}m`;
+
+  const noteMap = {
+    mabims:   'Kriteria MABIMS (Brunei, Indonesia, Malaysia, Singapura): ketinggian bulan >= 3° dan elongasi >= 6.4° saat matahari terbenam. Biasa digunakan oleh organisasi Nahdatul Ulama dan pemerintahan Indonesia.',
+    wujudul:  'Kriteria Wujudul: cukup bulan wujud (berada di atas ufuk) saat matahari terbenam, berapa pun ketinggiannya. Biasa digunakan oleh organisasi Muhammadiyah.',
+    odeh:     'Kriteria Odeh: Didasarkan pada dua variabel utama yaitu ARCV (topocentric arc of vision / beda ketinggian bulan-matahari) dan W (lebar sabit bulan dalam arcmenit)'
+  };
+  document.getElementById('criteria-note').textContent = noteMap[r.kriteria] || '';
+
+  drawSky(r.azimuth_moon, r.altitude_moon, r.azimuth_sun, r.altitude_sun);
+}
+
+// Fungsi untuk menggambar posisi bulan dan matahari di kanvas langit
+function drawSky(moonAz, moonAlt, sunAz, sunAlt) {
+  const canvas = document.getElementById('sky-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // gambar langit
+  const sky = ctx.createLinearGradient(0, 0, 0, H);// gradasi warna langit dari gelap ke terang mendekati ufuk
+  sky.addColorStop(0, '#06080f'); sky.addColorStop(0.4, '#0d1a2a');
+  sky.addColorStop(0.82, '#1a3a5a'); sky.addColorStop(1, '#8b4513');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+  // gradasi cahaya matahari
+  const sg = ctx.createRadialGradient(W*0.8, H, 1, W*0.8, H, 110);
+  sg.addColorStop(0, 'rgba(255,110,20,0.45)'); sg.addColorStop(1, 'rgba(255,80,0,0)');
+  ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#241508'; ctx.fillRect(0, H*0.85, W, H*0.15);
+
+  for (let i = 0; i < 55; i++) { //gambar bintang
+    ctx.beginPath();
+    ctx.arc(Math.random()*W, Math.random()*H*0.72, Math.random()*1.1, 0, 2*Math.PI);
+    ctx.fillStyle = `rgba(255,255,255,${0.25+Math.random()*0.55})`; ctx.fill();
+  }
+
+  const horizY = H * 0.83;// garis horizon/ufuk
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.setLineDash([3,7]); ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(0, horizY); ctx.lineTo(W, horizY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // fungsi untuk mengkonversi azimuth dan altitude ke koordinat x,y di kanvas
+  const azToX = az => ((az % 360) / 360) * W;
+  const altToY = alt => horizY - Math.max(alt, 0.5) / 65 * (H * 0.78);
+
+  // bulan
+  const moonX = azToX(moonAz || 270);
+  const moonY = altToY(moonAlt || 5);
+  const mr = 14;
+  
+  const glow = ctx.createRadialGradient(moonX, moonY, mr, moonX, moonY, mr * 2.8);
+  glow.addColorStop(0, 'rgba(210,205,160,0.22)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(moonX, moonY, mr*2.8, 0, 2*Math.PI); ctx.fill();
+
+  ctx.beginPath(); ctx.arc(moonX, moonY, mr, 0, 2*Math.PI);
+  ctx.fillStyle = '#e8e2cc'; ctx.fill();
+
+  const crescent = ctx.createRadialGradient(moonX-mr*0.35, moonY, mr*0.1, moonX+mr*0.45, moonY, mr*1.25);
+  crescent.addColorStop(0, 'rgba(12,8,6,0.96)'); crescent.addColorStop(0.55, 'rgba(12,8,6,0.65)'); crescent.addColorStop(1, 'rgba(12,8,6,0)');
+  ctx.beginPath(); ctx.arc(moonX, moonY, mr, 0, 2*Math.PI); ctx.fillStyle = crescent; ctx.fill();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '10px DM Mono, monospace'; ctx.textAlign = 'center';
+  if (moonAlt > 0.5) ctx.fillText('☽ ' + moonAlt.toFixed(1) + '°', moonX, moonY - mr - 7);
+
+  ctx.fillStyle = 'rgba(200,180,100,0.4)'; ctx.font = '9px DM Mono, monospace';
+  ctx.fillText('— ufuk —', W * 0.5, horizY + 14);
+}
+
+setTodayDate();
+document.getElementById('input-lat').value = '';
+document.getElementById('input-lon').value = '';
+checkServer();
+</script>
+</body>
+</html>
