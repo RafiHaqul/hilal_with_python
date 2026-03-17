@@ -1,10 +1,11 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import ephem
+# import ephem
 from datetime import datetime, timezone, timedelta
 import math
 import os
 from mangum import Mangum
+import traceback
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -137,8 +138,14 @@ def api_hilal():
     except ValueError as e:
         return jsonify({'error': f'Nilai tidak valid: {str(e)}'}), 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e),
+                        'trace': traceback.format_exc()
+                        }), 500
 
+
+@app.route('/ping')
+def ping():
+    return "pong"
 
 # if __name__ == '__main__':
 #     os.makedirs('static', exist_ok=True)
