@@ -4,6 +4,7 @@ import ephem
 from datetime import datetime, timezone, timedelta
 import math
 import os
+from mangum import Mangum
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -139,7 +140,10 @@ def api_hilal():
         return jsonify({'error': str(e)}), 500
 
 
-if __name__ == '__main__':
-    os.makedirs('static', exist_ok=True)
-    print("Jalankan: python app.py")
-    app.run(host='0.0.0.0', debug=True, port=5000)
+# if __name__ == '__main__':
+#     os.makedirs('static', exist_ok=True)
+#     print("Jalankan: python app.py")
+#     app.run(host='0.0.0.0', debug=True, port=5000)
+
+#  untuk vercel
+handler = Mangum(app)
