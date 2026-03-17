@@ -146,4 +146,5 @@ def api_hilal():
 #     app.run(host='0.0.0.0', debug=True, port=5000)
 
 #  untuk vercel
+app = Flask(__name__)
 handler = Mangum(app)
