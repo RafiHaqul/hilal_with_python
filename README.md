@@ -5,6 +5,8 @@ Di repo ini ada dua cara pakai:
 1. **CLI (Terminal)** → hilal.py
 2. **Web (Flask)** → app.py
 
+> Repo ini hanya bisa dijalankan menggunakan sistem operasi (os) Linux.
+> Gunakan wsl jika Anda berjalan pada os Windows.
 ---
 
 ### 1) Persiapan umum
